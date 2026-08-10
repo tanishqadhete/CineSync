@@ -108,7 +108,7 @@ const joinRoom = async (req, res) => {
                 message: "Room not found."
             });
         }
-        if (!room.isActive) {
+        if (room.status !== "ACTIVE") {
             return res.status(400).json({
                 message: "Room is no longer active."
             });
@@ -236,12 +236,6 @@ const leaveRoom = async (req, res) => {
     }
 };
 
-const room = await Room.findOne({
-    roomCode: req.params.roomCode
-})
-.populate("movieId")
-.populate("currentHost", "username");
-
 const getRoom = async (req, res) => {
     try {
         const room = await Room.findOne({
@@ -261,7 +255,8 @@ const getRoom = async (req, res) => {
                 title: room.movieId.title,
                 description: room.movieId.description,
                 duration: room.movieId.duration,
-                thumbnail: room.movieId.thumbnail
+                thumbnail: room.movieId.thumbnail,
+                videoUrl: room.movieId.videoUrl
             },
             host: room.currentHost,
             currentMembers: room.currentMembers,

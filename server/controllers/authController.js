@@ -20,15 +20,15 @@ const register = async (req, res) => {
                 message: "Invalid email."
             });
         }
-        if (password.length < 6) {
-            return res.status(400).json({
-                message: "Password must be at least 6 characters."
-            });
-        }
         const existingUser = await User.findOne({ email });
         if (existingUser) {
             return res.status(400).json({
                 message: "Email already registered."
+            });
+        }
+        if (password.length < 6 || password.length > 100) {
+            return res.status(400).json({
+                message: "Password must be between 6 and 100 characters."
             });
         }
         const hashedPassword = await bcrypt.hash(password, 10);
