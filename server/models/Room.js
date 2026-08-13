@@ -52,7 +52,8 @@ const roomSchema = new mongoose.Schema(
     },
     deleteAt: {
         type: Date,
-        default: null
+        default: null,
+        index: { expires: 0 }
     },
     lastActivityAt: {
         type: Date,
@@ -62,5 +63,10 @@ const roomSchema = new mongoose.Schema(
 {
     timestamps: true
 });
+
+roomSchema.index(
+    { deleteAt: 1 },
+    { expireAfterSeconds: 0 }
+);
 
 module.exports = mongoose.model("Room", roomSchema);

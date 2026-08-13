@@ -110,3 +110,31 @@ export const leaveRoom = async () => {
 
     return data;
 };
+
+export const kickMember = async (userId) => {
+    const token = localStorage.getItem("token");
+
+    const response = await fetch(
+        `${API_URL}/rooms/kick`,
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                userId
+            })
+        }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(
+            data.message || "Unable to remove member."
+        );
+    }
+
+    return data;
+};

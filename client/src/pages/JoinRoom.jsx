@@ -3,55 +3,64 @@ import { useNavigate } from "react-router-dom";
 import { joinRoom } from "../api/roomApi";
 
 function JoinRoom() {
+const navigate = useNavigate();
 
-    const navigate = useNavigate();
+const [roomCode, setRoomCode] = useState("");
+const [loading, setLoading] = useState(false);
+const [error, setError] = useState("");
 
-    const [roomCode, setRoomCode] = useState("");
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
+const handleJoinRoom = async (e) => {
+    e.preventDefault();
 
-    const handleJoinRoom = async (e) => {
+    setError("");
+    setLoading(true);
 
-        e.preventDefault();
+    try {
+        const data = await joinRoom(roomCode);
+        navigate(`/room/${data.room.roomCode}`);
+    } catch (err) {
+        setError(err.message);
+    } finally {
+        setLoading(false);
+    }
+};
 
-        setError("");
-        setLoading(true);
+return (
+    <div className="join-room-page">
 
-        try {
+        <div className="room-page-glow"></div>
 
-            const data = await joinRoom(roomCode);
+        <div className="room-page-content">
 
-            navigate(`/room/${data.room.roomCode}`);
+            <p className="room-page-label">
+                JOIN THE WATCH PARTY
+            </p>
 
-        } catch (err) {
+            <h1>
+                Watch together.
+                <br />
+                <span>Don't miss a moment.</span>
+            </h1>
 
-            setError(err.message);
-
-        } finally {
-
-            setLoading(false);
-
-        }
-    };
-
-    return (
-        <div className="page">
-
-            <h1>Join Room</h1>
+            <p className="room-page-description">
+                Enter the room code shared by your friend
+                and jump straight into the movie.
+            </p>
 
             <form
-                className="room-form"
+                className="room-form join-room-form"
                 onSubmit={handleJoinRoom}
             >
 
                 <label>
-                    Room Code
+                    ROOM CODE
                 </label>
 
                 <input
                     type="text"
-                    placeholder="Enter room code"
+                    placeholder="e.g. O812QY"
                     value={roomCode}
+                    maxLength={6}
                     onChange={(e) =>
                         setRoomCode(
                             e.target.value.toUpperCase()
@@ -66,7 +75,7 @@ function JoinRoom() {
                 >
                     {loading
                         ? "Joining..."
-                        : "Join Room"
+                        : "Join Watch Party →"
                     }
                 </button>
 
@@ -78,8 +87,15 @@ function JoinRoom() {
 
             </form>
 
+            <p className="room-page-footer">
+                One code. One movie. Everyone together.
+            </p>
+
         </div>
-    );
+
+    </div>
+);
+
 }
 
 export default JoinRoom;

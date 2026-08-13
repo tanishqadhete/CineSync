@@ -10,11 +10,15 @@ const {
     addMovie,
     updateMovie,
     deleteMovie,
-    getTopRatedMovies
+    getTopRatedMovies,
+    getMovieStats,
+    getAllMoviesForAdmin
 } = require("../controllers/movieController");
 
 router.get("/", authMiddleware, getMovies);
 router.get("/top-rated", authMiddleware, adminMiddleware, getTopRatedMovies);
+router.get("/stats", authMiddleware, adminMiddleware, getMovieStats);
+router.get("/admin", authMiddleware, adminMiddleware, getAllMoviesForAdmin);
 router.post("/", authMiddleware, adminMiddleware, addMovie);
 router.put("/:movieId", authMiddleware, adminMiddleware, updateMovie);
 router.delete("/:movieId", authMiddleware, adminMiddleware, deleteMovie);

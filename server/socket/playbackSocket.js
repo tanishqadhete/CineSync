@@ -130,4 +130,64 @@ module.exports = (io, socket) => {
 
     });
 
+    socket.on("video-ended", async () => {
+        try {
+            if (!socket.roomId) {
+                return socket.emit("error-message", {
+                    message: "You are not connected to a room."
+                });
+            }
+
+            const room = await Room.findById(socket.roomId);
+
+            if (!room) {
+                return socket.emit("error-message", {
+                    message: "Room not found."
+                });
+            }
+
+            if (
+                !room.currentHost ||
+                !room.currentHost.equals(socket.user._id)
+            ) {
+                return socket.emit("error-message", {
+                    message: "Only the host can end the movie."
+                });
+            }
+
+            room.status = "ENDED";
+            room.isPlaying = false;
+            room.currentTime = 0;
+
+            // Keep room for 5 more minutes
+            room.deleteAt = new Date(
+                Date.now() + 5 * 60 * 1000
+            );
+
+            room.lastActivityAt = new Date();
+
+            await room.save();
+
+            io.to(socket.roomId).emit("room-ended", {
+                roomId: room._id,
+                movieId: room.movieId,
+                deleteAt: room.deleteAt
+            });
+
+            console.log(
+                `Room ${room.roomCode} ended.`
+            );
+
+        } catch (err) {
+            console.error(
+                "Video ended error:",
+                err
+            );
+
+            socket.emit("error-message", {
+                message: "Unable to end room."
+            });
+        }
+    });
+
 };

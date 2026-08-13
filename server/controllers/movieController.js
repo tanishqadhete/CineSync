@@ -5,7 +5,7 @@ const getMovies = async (req, res) => {
         const movies = await Movie.find({
             isActive: true
         }).select(
-            "title description duration thumbnail averageRating"
+            "title description duration thumbnail averageRating totalRatings"
         );
         res.status(200).json({
             movies
@@ -146,10 +146,54 @@ const getTopRatedMovies = async (req, res) => {
     }
 };
 
+const getMovieStats = async (req, res) => {
+    try {
+        const movies = await Movie.find({})
+            .select(
+                "title thumbnail totalStreams totalRatings averageRating isActive"
+            )
+            .sort({
+                totalStreams: -1
+            });
+
+        res.status(200).json({
+            movies
+        });
+    }
+    catch (err) {
+        res.status(500).json({
+            message: err.message
+        });
+    }
+};
+
+const getAllMoviesForAdmin = async (req, res) => {
+    try {
+        const movies = await Movie.find({})
+            .select(
+                "title description duration thumbnail videoUrl totalStreams totalStars totalRatings averageRating isActive"
+            )
+            .sort({
+                createdAt: -1
+            });
+
+        res.status(200).json({
+            movies
+        });
+    }
+    catch (err) {
+        res.status(500).json({
+            message: err.message
+        });
+    }
+};
+
 module.exports = {
     getMovies,
     addMovie,
     updateMovie,
     deleteMovie,
-    getTopRatedMovies
+    getTopRatedMovies,
+    getMovieStats,
+    getAllMoviesForAdmin
 };

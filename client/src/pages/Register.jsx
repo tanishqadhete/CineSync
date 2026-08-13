@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { registerUser } from "../api/authApi";
 import { useNavigate, Link } from "react-router-dom";
+import { Eye, EyeOff } from "lucide-react";
 
 function Register() {
-
     const navigate = useNavigate();
 
     const [username, setUsername] = useState("");
@@ -12,16 +12,15 @@ function Register() {
 
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
     const handleRegister = async (e) => {
-
         e.preventDefault();
 
         setError("");
         setLoading(true);
 
         try {
-
             const data = await registerUser(
                 username,
                 email,
@@ -39,91 +38,128 @@ function Register() {
             );
 
             navigate("/dashboard");
-
         } catch (err) {
-
             setError(err.message);
-
         } finally {
-
             setLoading(false);
-
         }
     };
 
     return (
-        <div className="auth-container">
+        <div className="app auth-page">
 
-            <h1>CineSync</h1>
+            <div className="auth-container">
 
-            <p className="subtitle">
-                Create your account.
-            </p>
+                <div className="brand">
 
-            <div className="auth-card">
+                    <div className="brand">
+                        Cine<span>Sync</span>
+                    </div>
 
-                <h2>Register</h2>
-
-                <form onSubmit={handleRegister}>
-
-                    <input
-                        type="text"
-                        placeholder="Username"
-                        value={username}
-                        onChange={(e) =>
-                            setUsername(e.target.value)
-                        }
-                        required
-                    />
-
-                    <input
-                        type="email"
-                        placeholder="Email"
-                        value={email}
-                        onChange={(e) =>
-                            setEmail(e.target.value)
-                        }
-                        required
-                    />
-
-                    <input
-                        type="password"
-                        placeholder="Password"
-                        value={password}
-                        onChange={(e) =>
-                            setPassword(e.target.value)
-                        }
-                        required
-                    />
-
-                    <button
-                        type="submit"
-                        disabled={loading}
-                    >
-                        {loading
-                            ? "Creating account..."
-                            : "Register"
-                        }
-                    </button>
-
-                </form>
-
-                {error && (
-                    <p className="error">
-                        {error}
+                    <p className="tagline">
+                        Your movie night starts here.
                     </p>
-                )}
 
-                <p className="switch-text">
-                    Already have an account?
+                    
 
-                    <Link
-                        to="/"
-                        className="link-button"
-                    >
-                        Login
-                    </Link>
+                </div>
 
+                <div className="auth-card">
+
+                    <h2>
+                        Create your account
+                    </h2>
+
+                    <form onSubmit={handleRegister}>
+
+                        <input
+                            type="text"
+                            placeholder="Username"
+                            value={username}
+                            onChange={(e) =>
+                                setUsername(e.target.value)
+                            }
+                            required
+                        />
+
+                        <input
+                            type="email"
+                            placeholder="Email"
+                            value={email}
+                            onChange={(e) =>
+                                setEmail(e.target.value)
+                            }
+                            required
+                        />
+
+                        <div className="password-wrapper">
+
+    <input
+        type={showPassword ? "text" : "password"}
+        placeholder="Password"
+        value={password}
+        onChange={(e) =>
+            setPassword(e.target.value)
+        }
+        required
+    />
+
+    <button
+        type="button"
+        className="password-toggle"
+        onClick={() =>
+            setShowPassword((prev) => !prev)
+        }
+        aria-label={
+            showPassword
+                ? "Hide password"
+                : "Show password"
+        }
+    >
+        {showPassword ? (
+            <EyeOff size={18} />
+        ) : (
+            <Eye size={18} />
+        )}
+    </button>
+
+</div>
+
+                        <button
+                            type="submit"
+                            disabled={loading}
+                        >
+                            {loading
+                                ? "Creating your account..."
+                                : "Create Account"
+                            }
+                        </button>
+
+                    </form>
+
+                    {error && (
+                        <p className="error">
+                            {error}
+                        </p>
+                    )}
+
+                    <p className="switch-text">
+
+                        Already part of CineSync?
+
+                        <Link
+                            to="/"
+                            className="link-button"
+                        >
+                            Login
+                        </Link>
+
+                    </p>
+
+                </div>
+
+                <p className="auth-footer">
+                    Your movie night, together.
                 </p>
 
             </div>

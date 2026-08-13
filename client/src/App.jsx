@@ -7,7 +7,13 @@ import Movies from "./pages/Movies";
 import CreateRoom from "./pages/CreateRoom";
 import JoinRoom from "./pages/JoinRoom";
 import WatchRoom from "./pages/WatchRoom";
-import "./App.css";
+import AdminDashboard from "./pages/AdminDashboard";
+import "./styles/global.css";
+import "./styles/auth.css";
+import "./styles/dashboard.css";
+import "./styles/movies.css";
+import "./styles/room.css";
+import "./styles/watchroom.css";
 
 function App() {
 
@@ -45,6 +51,10 @@ function App() {
                 <Route
                     path="/room/:roomCode"
                     element={<WatchRoom />}
+                />
+                <Route
+                    path="/admin"
+                    element={<AdminDashboard />}
                 />
 
             </Routes>

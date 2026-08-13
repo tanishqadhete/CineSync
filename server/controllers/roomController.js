@@ -57,6 +57,14 @@ const createRoom = async (req, res) => {
             maxMembers,
             currentMembers: 1
         });
+        await Movie.findByIdAndUpdate(
+            movieId,
+            {
+                $inc: {
+                    streamCount: 1
+                }
+            }
+        );
 
         await RoomMember.create({
             roomId: room._id,
