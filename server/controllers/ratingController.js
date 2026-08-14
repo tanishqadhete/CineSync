@@ -28,7 +28,7 @@ const rateMovie = async (req, res) => {
         // Check movie
         const movie = await Movie.findById(movieId);
 
-        if (!movie || !movie.isActive) {
+        if (!movie) {
             return res.status(404).json({
                 message: "Movie not found."
             });

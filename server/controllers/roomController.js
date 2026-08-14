@@ -41,7 +41,7 @@ const createRoom = async (req, res) => {
         }
 
         const movie = await Movie.findById(movieId);
-        if (!movie || !movie.isActive) {
+        if (!movie) {
             return res.status(404).json({
                 message: "Movie not found."
             });
@@ -61,7 +61,7 @@ const createRoom = async (req, res) => {
             movieId,
             {
                 $inc: {
-                    streamCount: 1
+                    totalStreams: 1
                 }
             }
         );
@@ -140,12 +140,6 @@ const joinRoom = async (req, res) => {
             roomMember.joinedAt = new Date();
             roomMember.leftAt = null;
             await roomMember.save();
-            if (
-                room.originalHost &&
-                room.originalHost.equals(req.user._id)
-            ) {
-                room.currentHost = req.user._id;
-            }
 
         } else {
             await RoomMember.create({
@@ -224,15 +218,26 @@ const leaveRoom = async (req, res) => {
             const nextHost = await RoomMember.findOne({
                 roomId: room._id,
                 isActive: true
-            }).sort({ joinedAt: 1 });
+            }).sort({ joinedAt: 1 })
+            const io = req.app.get("io");
             if (nextHost) {
                 room.currentHost = nextHost.userId;
+                newHost = {
+                    id: nextHost.userId._id.toString(),
+                    username: nextHost.userId.username
+                };
             }
             else {
                 room.currentHost = null;
             }
         }
         await room.save();
+        if (newHost) {
+            io.to(room._id.toString()).emit(
+                "host-changed",
+                newHost
+            );
+        }
         res.status(200).json({
             message: "Left room successfully."
         });
@@ -369,7 +374,6 @@ const kickMember = async (req, res) => {
                 message: "Member not found."
             });
         }
-        member.isActive = false;
         member.leftAt = new Date();
         await member.save();
         await User.findByIdAndUpdate(
@@ -380,6 +384,11 @@ const kickMember = async (req, res) => {
         );
         room.currentMembers--;
         await room.save();
+        const io = req.app.get("io");
+        io.to(room._id.toString()).emit("member-kicked", {
+            userId: userId.toString(),
+            
+        });
         res.status(200).json({
             message: "Member removed successfully."
         });

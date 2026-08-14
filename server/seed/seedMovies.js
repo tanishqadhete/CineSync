@@ -16,7 +16,6 @@ const seedMovies = async () => {
                 totalStars: 0,
                 totalRatings: 0,
                 averageRating: 0,
-                isActive: true
             },
             {
                 title: "Inception",
@@ -27,7 +26,6 @@ const seedMovies = async () => {
                 totalStars: 0,
                 totalRatings: 0,
                 averageRating: 0,
-                isActive: true
             },
             {
                 title: "The Dark Knight",
@@ -38,7 +36,6 @@ const seedMovies = async () => {
                 totalStars: 0,
                 totalRatings: 0,
                 averageRating: 0,
-                isActive: true
             },
             {
                 title: "The Shawshank Redemption",
@@ -49,7 +46,6 @@ const seedMovies = async () => {
                 totalStars: 0,
                 totalRatings: 0,
                 averageRating: 0,
-                isActive: true
             },
             {
                 title: "Avengers: Endgame",
@@ -60,7 +56,6 @@ const seedMovies = async () => {
                 totalStars: 0,
                 totalRatings: 0,
                 averageRating: 0,
-                isActive: true
             }
         ]);
         console.log("Movies seeded successfully.");

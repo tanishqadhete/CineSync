@@ -3,7 +3,6 @@ const Movie = require("../models/Movie");
 const getMovies = async (req, res) => {
     try {
         const movies = await Movie.find({
-            isActive: true
         }).select(
             "title description duration thumbnail averageRating totalRatings"
         );
@@ -107,7 +106,6 @@ const deleteMovie = async (req, res) => {
                 message: "Movie not found."
             });
         }
-        movie.isActive = false;
         await movie.save();
         res.status(200).json({
             message: "Movie deleted successfully."
@@ -123,7 +121,6 @@ const deleteMovie = async (req, res) => {
 const getTopRatedMovies = async (req, res) => {
     try {
         const movies = await Movie.find({
-            isActive: true,
             totalRatings: {
                 $gt: 0
             }
@@ -150,7 +147,7 @@ const getMovieStats = async (req, res) => {
     try {
         const movies = await Movie.find({})
             .select(
-                "title thumbnail totalStreams totalRatings averageRating isActive"
+                "title thumbnail totalStreams totalRatings averageRating"
             )
             .sort({
                 totalStreams: -1
@@ -171,7 +168,7 @@ const getAllMoviesForAdmin = async (req, res) => {
     try {
         const movies = await Movie.find({})
             .select(
-                "title description duration thumbnail videoUrl totalStreams totalStars totalRatings averageRating isActive"
+                "title description duration thumbnail videoUrl totalStreams totalStars totalRatings averageRating"
             )
             .sort({
                 createdAt: -1

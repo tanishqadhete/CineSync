@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getRoom, leaveRoom, kickMember } from "../api/roomApi";
-import { submitRating } from "../api/ratingApi";
 import EmojiPicker from "emoji-picker-react";
 import socket from "../socket";
 
@@ -25,11 +24,6 @@ function WatchRoom() {
     const [isHost, setIsHost] = useState(false);
     const [activeTab, setActiveTab] = useState("chat");
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-    const [showRating, setShowRating] = useState(false);
-    const [selectedRating, setSelectedRating] = useState(0);
-    const [ratingSubmitted, setRatingSubmitted] = useState(false);
-    const [ratingLoading, setRatingLoading] = useState(false);
-    const [ratingError, setRatingError] = useState("");
     const chatMessagesRef = useRef(null);
     const videoRef = useRef(null);
 
@@ -207,6 +201,10 @@ function WatchRoom() {
             handleSocketError
         );
 
+        socket.on(
+            "host-changed",
+            handleHostChanged
+        );
         return () => {
             socket.off(
                 "room-state",
@@ -242,7 +240,10 @@ function WatchRoom() {
                 "error-message",
                 handleSocketError
             );
-
+            socket.off(
+            "host-changed",
+            handleHostChanged
+        );
             socket.disconnect();
         };
     }, [roomCode, isHost, videoReady]);
@@ -388,41 +389,6 @@ function WatchRoom() {
     const handleVideoEnded = () => {
         if (isHost) {
             socket.emit("video-ended");
-        }
-
-        setShowRating(true);
-    };
-
-    const handleSubmitRating = async () => {
-
-        if (!selectedRating) {
-            setRatingError("Please select a rating.");
-            return;
-        }
-
-        try {
-
-            setRatingLoading(true);
-            setRatingError("");
-
-            await submitRating(
-                movie._id,
-                selectedRating
-            );
-
-            setRatingSubmitted(true);
-
-        } catch (err) {
-
-            setRatingError(
-                err.message ||
-                "Unable to submit rating."
-            );
-
-        } finally {
-
-            setRatingLoading(false);
-
         }
     };
 
@@ -793,96 +759,6 @@ function WatchRoom() {
                 </aside>
 
             </main>
-            {showRating && (
-    <div className="rating-overlay">
-
-        <div className="rating-modal">
-
-            {!ratingSubmitted ? (
-                <>
-                    <div className="rating-icon">
-                        ★
-                    </div>
-
-                    <h2>
-                        How was the movie?
-                    </h2>
-
-                    <p>
-                        Rate <strong>{movie.title}</strong>
-                    </p>
-
-                    <div className="rating-stars">
-
-                        {[1, 2, 3, 4, 5].map(
-                            (star) => (
-                                <button
-                                    key={star}
-                                    type="button"
-                                    className={
-                                        star <= selectedRating
-                                            ? "selected"
-                                            : ""
-                                    }
-                                    onClick={() =>
-                                        setSelectedRating(star)
-                                    }
-                                >
-                                    ★
-                                </button>
-                            )
-                        )}
-
-                    </div>
-
-                    {ratingError && (
-                        <p className="rating-error">
-                            {ratingError}
-                        </p>
-                    )}
-
-                    <button
-                        className="submit-rating-button"
-                        onClick={handleSubmitRating}
-                        disabled={ratingLoading}
-                    >
-                        {ratingLoading
-                            ? "Submitting..."
-                            : "Submit Rating"
-                        }
-                    </button>
-                </>
-            ) : (
-                <>
-                    <div className="rating-success-icon">
-                        ✓
-                    </div>
-
-                    <h2>
-                        Thanks for rating!
-                    </h2>
-
-                    <p>
-                        Your rating has been recorded.
-                    </p>
-
-                    <button
-                        className="submit-rating-button"
-                        onClick={() => {
-                            setShowRating(false);
-                            setRatingSubmitted(false);
-                            setSelectedRating(0);
-                        }}
-                    >
-                        Done
-                    </button>
-                </>
-            )}
-
-        </div>
-
-    </div>
-)}
 
         </div>
     );

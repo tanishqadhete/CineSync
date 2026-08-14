@@ -528,10 +528,7 @@ function AdminDashboard() {
                         </span>
 
                         <strong>
-                            {movies.filter(
-                                (movie) =>
-                                    movie.isActive
-                            ).length}
+                            {movies.filter().length}
                         </strong>
 
                     </div>
@@ -742,24 +739,6 @@ function AdminDashboard() {
 
                                                 <td>
 
-                                                    <span
-                                                        className={
-                                                            movie.isActive
-                                                                ? "status active"
-                                                                : "status inactive"
-                                                        }
-                                                    >
-                                                        {movie.isActive
-                                                            ? "Active"
-                                                            : "Inactive"
-                                                        }
-                                                    </span>
-
-                                                </td>
-
-
-                                                <td>
-
                                                     {movieStats?.totalStreams ||
                                                         movie.totalStreams ||
                                                         0}
@@ -795,7 +774,7 @@ function AdminDashboard() {
 
                                                 <td>
 
-                                                    {movie.isActive && (
+                                                  
 
                                                         <button
                                                             className="delete-movie-button"
@@ -807,8 +786,6 @@ function AdminDashboard() {
                                                         >
                                                             Remove
                                                         </button>
-
-                                                    )}
 
                                                 </td>
 
