@@ -1,4 +1,4 @@
-const API_URL = "http://localhost:5000/api";
+const API_URL = "https://cinesync-backend-mnq9.onrender.com/api";
 
 export const loginUser = async (email, password) => {
 
