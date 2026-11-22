@@ -1,6 +1,8 @@
+
 const Room = require("../models/Room");
 const RoomMember = require("../models/RoomMember");
 const Message = require("../models/Message");
+
 const getPlaybackPosition = (room, now = Date.now()) => {
     const position = Number(room.currentTime) || 0;
 
@@ -14,24 +16,23 @@ const getPlaybackPosition = (room, now = Date.now()) => {
 
     return position + Math.max(0, now - updatedAt) / 1000;
 };
+
 module.exports = (io, socket) => {
 
     socket.on("join-room", async (roomCode) => {
-
         try {
-
             const room = await Room.findOne({
                 roomCode: roomCode.toUpperCase(),
                 status: "ACTIVE"
             })
-            .populate(
-                "movieId",
-                "title description duration thumbnail videoUrl"
-            )
-            .populate(
-                "currentHost",
-                "username"
-            );
+                .populate(
+                    "movieId",
+                    "title description duration thumbnail videoUrl"
+                )
+                .populate(
+                    "currentHost",
+                    "username"
+                );
 
             if (!room) {
                 return socket.emit("error-message", {
@@ -55,15 +56,15 @@ module.exports = (io, socket) => {
                 roomId: room._id,
                 isActive: true
             })
-            .populate("userId", "username");
+                .populate("userId", "username");
 
             const messages = await Message.find({
                 roomId: room._id
             })
-            .sort({
-                createdAt: 1
-            })
-            .populate("sender", "username");
+                .sort({
+                    createdAt: 1
+                })
+                .populate("sender", "username");
 
             // Join Socket.IO room
             socket.join(room._id.toString());
@@ -71,12 +72,16 @@ module.exports = (io, socket) => {
             // Remember which room this socket belongs to
             socket.roomId = room._id.toString();
 
+            // Use the same timestamp for playback position and serverTime
+            const serverTime = Date.now();
+
             // Send initial room state to this user
             socket.emit("room-state", {
-                 isHost:
-        room.currentHost &&
-        room.currentHost._id.toString() ===
-            socket.user._id.toString(),
+                isHost:
+                    room.currentHost &&
+                    room.currentHost._id.toString() ===
+                        socket.user._id.toString(),
+
                 room: {
                     _id: room._id,
                     roomCode: room.roomCode,
@@ -89,10 +94,10 @@ module.exports = (io, socket) => {
                 movie: room.movieId,
 
                 playback: {
-                    currentTime: getPlaybackPosition(room),
+                    currentTime: getPlaybackPosition(room, serverTime),
                     isPlaying: room.isPlaying,
-                    serverTime: Date.now(),
-                    version: room.playbackVersion
+                    serverTime,
+                    version: room.playbackVersion ?? 0
                 },
 
                 members: members.map(member => ({
@@ -106,7 +111,6 @@ module.exports = (io, socket) => {
                     text: message.text,
                     createdAt: message.createdAt
                 }))
-
             });
 
             // Tell everyone else that someone joined
@@ -122,59 +126,56 @@ module.exports = (io, socket) => {
                 `${socket.user.username} joined socket room ${room.roomCode}`
             );
 
-        }
-        catch (err) {
-
+        } catch (err) {
             console.error(err);
 
             socket.emit("error-message", {
                 message: "Unable to join room."
             });
-
         }
-
     });
 
 
     socket.on("disconnect", async () => {
-    try {
-        if (!socket.roomId) {
-            console.log(
-                `User disconnected: ${socket.user.username}`
-            );
-            return;
-        }
+        try {
+            if (!socket.roomId) {
+                console.log(
+                    `User disconnected: ${socket.user.username}`
+                );
+                return;
+            }
 
-        const roomId = socket.roomId;
+            const roomId = socket.roomId;
 
-        const room = await Room.findById(roomId)
-            .populate("currentHost", "username");
+            const room = await Room.findById(roomId)
+                .populate("currentHost", "username");
 
-        if (!room) {
-            return;
-        }
+            if (!room) {
+                return;
+            }
 
-        io.to(roomId).emit("member-left", {
-            id: socket.user._id,
-            username: socket.user.username
-        });
-
-        if (room.currentHost) {
-            io.to(roomId).emit("host-changed", {
-                id: room.currentHost._id,
-                username: room.currentHost.username
+            io.to(roomId).emit("member-left", {
+                id: socket.user._id,
+                username: socket.user.username
             });
-        }
 
-        console.log(
-            `${socket.user.username} disconnected from room ${room.roomCode}`
-        );
-    } catch (err) {
-        console.error(
-            "Socket disconnect error:",
-            err.message
-        );
-    }
-});
+            if (room.currentHost) {
+                io.to(roomId).emit("host-changed", {
+                    id: room.currentHost._id,
+                    username: room.currentHost.username
+                });
+            }
+
+            console.log(
+                `${socket.user.username} disconnected from room ${room.roomCode}`
+            );
+
+        } catch (err) {
+            console.error(
+                "Socket disconnect error:",
+                err.message
+            );
+        }
+    });
 
 };

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getRoom, leaveRoom, kickMember } from "../api/roomApi";
 import { submitRating } from "../api/ratingApi";
@@ -27,6 +27,46 @@ function WatchRoom() {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const chatMessagesRef = useRef(null);
   const videoRef = useRef(null);
+  const isHostRef = useRef(false);
+  const videoReadyRef = useRef(false);
+  const playbackVersionRef = useRef(-1);
+  const playbackServerTimeRef = useRef(0);
+  const latestPlaybackRef = useRef(null);
+  const syncReadyRef = useRef(false);
+  const currentUserId = (() => {
+    try {
+      const user = JSON.parse(localStorage.getItem("user") || "null");
+      return String(user?._id ?? user?.id ?? "");
+    } catch { return ""; }
+  })();
+
+  const applyPlaybackSync = useCallback((data, force = false) => {
+    if (!data || !Number.isFinite(data.currentTime)) return;
+    const version = Number(data.version ?? 0);
+    const serverTime = Number(data.serverTime ?? 0);
+    if (version < playbackVersionRef.current ||
+        (version === playbackVersionRef.current && serverTime < playbackServerTimeRef.current)) return;
+    playbackVersionRef.current = version;
+    playbackServerTimeRef.current = serverTime;
+    latestPlaybackRef.current = data;
+    setPlayback(data);
+
+    const video = videoRef.current;
+    if (!video || isHostRef.current || !videoReadyRef.current || !syncReadyRef.current || video.readyState < 1) return;
+
+    // Advance the received checkpoint by transit time, when possible.
+    const transitSeconds = serverTime > 0 ? Math.max(0, Math.min(1, (Date.now() - serverTime) / 1000)) : 0;
+    let target = data.currentTime + (data.isPlaying ? transitSeconds : 0);
+    if (Number.isFinite(video.duration)) target = Math.min(target, video.duration);
+    target = Math.max(0, target);
+    if (force || Math.abs(video.currentTime - target) > 0.75) video.currentTime = target;
+    if (data.isPlaying && video.paused) {
+      video.play().catch(err => console.error("Unable to play video:", err));
+    } else if (!data.isPlaying && !video.paused) video.pause();
+  }, []);
+
+  useEffect(() => { isHostRef.current = isHost; }, [isHost]);
+  useEffect(() => { videoReadyRef.current = videoReady; }, [videoReady]);
 
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [selectedRating, setSelectedRating] = useState(0);
@@ -35,9 +75,11 @@ function WatchRoom() {
   const [ratingSuccess, setRatingSuccess] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     const connectToRoom = async () => {
       try {
         const data = await getRoom(roomCode);
+        if (cancelled) return;
 
         setRoom(data);
         setMovie(data.movie);
@@ -46,15 +88,17 @@ function WatchRoom() {
           token: localStorage.getItem("token"),
         };
 
-        socket.connect();
-
-        socket.emit("join-room", roomCode);
+        if (socket.connected) socket.emit("join-room", roomCode);
+        else socket.connect();
       } catch (err) {
+        if (cancelled) return;
         setError(err.message);
         setLoading(false);
       }
     };
 
+    const handleConnect = () => socket.emit("join-room", roomCode);
+    socket.on("connect", handleConnect);
     connectToRoom();
 
     const handleRoomState = (data) => {
@@ -64,19 +108,10 @@ function WatchRoom() {
       setMovie(data.movie);
       setMembers(data.members);
       setMessages(data.messages);
-      setPlayback(data.playback);
-
-      const currentUser = JSON.parse(localStorage.getItem("user"));
-
-      if (
-        currentUser &&
-        data.room.currentHost &&
-        data.room.currentHost._id === currentUser.id
-      ) {
-        setIsHost(true);
-      } else {
-        setIsHost(false);
-      }
+      const hostNow = String(data.room.currentHost?._id ?? "") === currentUserId;
+      isHostRef.current = hostNow;
+      setIsHost(hostNow);
+      applyPlaybackSync(data.playback, true);
 
       setLoading(false);
     };
@@ -99,47 +134,9 @@ function WatchRoom() {
       setMessages((prev) => [...prev, newMessage]);
     };
 
-    const handlePlaybackUpdated = (data) => {
-      const video = videoRef.current;
-
-      setPlayback({
-        currentTime: data.currentTime,
-        isPlaying: data.isPlaying,
-      });
-
-      if (!video || isHost) {
-        return;
-      }
-
-      video.currentTime = data.currentTime;
-
-      if (data.isPlaying) {
-        if (!videoReady) {
-          return;
-        }
-
-        video.play().catch((err) => {
-          console.error("Unable to play video:", err);
-        });
-      } else {
-        video.pause();
-      }
-    };
-
-    const handlePlaybackSeeked = (data) => {
-      const video = videoRef.current;
-
-      setPlayback((prev) => ({
-        ...prev,
-        currentTime: data.currentTime,
-      }));
-
-      if (!video || isHost) {
-        return;
-      }
-
-      video.currentTime = data.currentTime;
-    };
+    const handlePlaybackUpdated = (data) => applyPlaybackSync(data);
+    const handlePlaybackSeeked = (data) => applyPlaybackSync(data, true);
+    const handlePlaybackSync = (data) => applyPlaybackSync(data);
 
     const handleKickMember = async (userId) => {
       try {
@@ -173,6 +170,7 @@ function WatchRoom() {
     socket.on("playback-updated", handlePlaybackUpdated);
 
     socket.on("playback-seeked", handlePlaybackSeeked);
+    socket.on("playback-sync", handlePlaybackSync);
 
     socket.on("error-message", handleSocketError);
 
@@ -180,6 +178,7 @@ function WatchRoom() {
 
     socket.on("room-ended", handleRoomEnded);
     return () => {
+      cancelled = true;
       socket.off("room-state", handleRoomState);
 
       socket.off("member-joined", handleMemberJoined);
@@ -191,13 +190,15 @@ function WatchRoom() {
       socket.off("playback-updated", handlePlaybackUpdated);
 
       socket.off("playback-seeked", handlePlaybackSeeked);
+      socket.off("playback-sync", handlePlaybackSync);
+      socket.off("connect", handleConnect);
 
       socket.off("error-message", handleSocketError);
       socket.off("host-changed", handleHostChanged);
       socket.off("room-ended", handleRoomEnded);
       socket.disconnect();
     };
-  }, [roomCode, isHost, videoReady]);
+  }, [roomCode, currentUserId, applyPlaybackSync]);
 
   useEffect(() => {
     const chatMessages = chatMessagesRef.current;
@@ -211,23 +212,19 @@ function WatchRoom() {
       behavior: "smooth",
     });
   }, [messages]);
-  const handleJoinPlayback = async () => {
-    const video = videoRef.current;
-
-    if (!video) {
-      return;
-    }
-
+  const handleJoinPlayback = () => {
+    videoReadyRef.current = true;
     setVideoReady(true);
+    if (videoRef.current?.readyState >= 1) syncReadyRef.current = true;
+    if (latestPlaybackRef.current) applyPlaybackSync(latestPlaybackRef.current, true);
+    socket.emit("request-playback-sync");
+  };
 
-    video.currentTime = playback.currentTime;
-
-    if (playback.isPlaying) {
-      try {
-        await video.play();
-      } catch (err) {
-        console.error("Unable to start playback:", err);
-      }
+  const handleVideoLoaded = () => {
+    syncReadyRef.current = true;
+    if (videoReadyRef.current && latestPlaybackRef.current) {
+      applyPlaybackSync(latestPlaybackRef.current, true);
+      socket.emit("request-playback-sync");
     }
   };
 
@@ -320,7 +317,9 @@ function WatchRoom() {
       },
     }));
 
-    setIsHost(host.id === localStorage.getItem("userId"));
+    const hostNow = String(host.id) === currentUserId;
+    isHostRef.current = hostNow;
+    setIsHost(hostNow);
   };
 
   const handleSubmitRating = async () => {
@@ -423,6 +422,7 @@ function WatchRoom() {
             onPause={isHost ? handleVideoPause : undefined}
             onSeeked={isHost ? handleVideoSeek : undefined}
             onEnded={isHost ? handleVideoEnded : undefined}
+            onLoadedMetadata={handleVideoLoaded}
           >
             <source src={movie.videoUrl} type="video/mp4" />
             Your browser does not support video playback.
