@@ -11,9 +11,6 @@ const connectDB = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
 const roomRoutes = require("./routes/roomRoutes");
 const movieRoutes = require("./routes/movieRoutes");
-const Room = require("./models/Room");
-const RoomMember = require("./models/RoomMember");
-const Message = require("./models/Message");
 const socketAuthMiddleware = require("./middleware/socketAuthMiddleware");
 const socketHandler = require("./socket/socketHandler");
 const ratingRoutes = require("./routes/ratingRoutes");
@@ -34,11 +31,24 @@ const io = new Server(server, {
         origin: "*"
     }
 });
+app.set("io", io);
 io.use(socketAuthMiddleware);
-socketHandler(io);
 
 const PORT = process.env.PORT || 5000;
 
-server.listen(PORT, () => {
-    console.log(`Server running on ${PORT}`);
-});
+const startServer = async () => {
+    try {
+        await connectDB();
+
+        socketHandler(io);
+
+        server.listen(PORT, () => {
+            console.log(`Server running on ${PORT}`);
+        });
+    } catch (err) {
+        console.error("Server startup failed:", err);
+        process.exit(1);
+    }
+};
+
+startServer();

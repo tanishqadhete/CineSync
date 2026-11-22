@@ -1,20 +1,21 @@
+
 const Rating = require("../models/Rating");
 const Movie = require("../models/Movie");
 const Room = require("../models/Room");
 const RoomMember = require("../models/RoomMember");
 
+const { removeRoomMember } = require("../utils/roomCleanup");
+
 const rateMovie = async (req, res) => {
     try {
         const { movieId, roomId, rating } = req.body;
 
-        // Validate input
         if (!movieId || !roomId || rating === undefined) {
             return res.status(400).json({
                 message: "Movie ID, room ID and rating are required."
             });
         }
 
-        // Validate rating
         if (
             !Number.isInteger(rating) ||
             rating < 1 ||
@@ -25,7 +26,6 @@ const rateMovie = async (req, res) => {
             });
         }
 
-        // Check movie
         const movie = await Movie.findById(movieId);
 
         if (!movie) {
@@ -34,7 +34,6 @@ const rateMovie = async (req, res) => {
             });
         }
 
-        // Check room
         const room = await Room.findById(roomId);
 
         if (!room) {
@@ -43,32 +42,36 @@ const rateMovie = async (req, res) => {
             });
         }
 
-        // Rating should only be allowed after room ends
         if (room.status !== "ENDED") {
             return res.status(400).json({
                 message: "You can rate the movie only after the room ends."
             });
         }
 
-        const roomMember = await RoomMember.findOne({
-            roomId,
-            userId: req.user._id
-        });
-
-        if (!roomMember) {
-            return res.status(403).json({
-                message: "You were not a member of this room."
+        if (!room.deleteAt || room.deleteAt <= new Date()) {
+            return res.status(400).json({
+                message: "The rating period has expired."
             });
         }
 
-        // Make sure this room belongs to this movie
         if (!room.movieId.equals(movieId)) {
             return res.status(400).json({
                 message: "This movie was not played in this room."
             });
         }
 
-        // Check whether user has already rated this movie in this room
+        const member = await RoomMember.findOne({
+            roomId,
+            userId: req.user._id,
+            isActive: true
+        });
+
+        if (!member) {
+            return res.status(403).json({
+                message: "You are not an active member of this room."
+            });
+        }
+
         const existingRating = await Rating.findOne({
             userId: req.user._id,
             movieId,
@@ -81,7 +84,6 @@ const rateMovie = async (req, res) => {
             });
         }
 
-        // Create rating
         const newRating = await Rating.create({
             userId: req.user._id,
             movieId,
@@ -89,31 +91,50 @@ const rateMovie = async (req, res) => {
             rating
         });
 
-        // Update movie statistics
-        movie.totalStars += rating;
-        movie.totalRatings += 1;
+        // Atomically update totalStars, totalRatings,
+        // and averageRating in a single MongoDB operation.
+        const updatedMovie = await Movie.findByIdAndUpdate(
+    movieId,
+    {
+        $inc: {
+            totalStars: rating,
+            totalRatings: 1
+        }
+    },
+    { new: true }
+);
 
-        movie.averageRating =
-            movie.totalStars / movie.totalRatings;
+updatedMovie.averageRating =
+    updatedMovie.totalStars / updatedMovie.totalRatings;
 
-        await movie.save();
+await updatedMovie.save();
 
-        res.status(201).json({
+        await removeRoomMember(
+            room._id,
+            req.user._id
+        );
+
+        return res.status(201).json({
             message: "Movie rated successfully.",
             rating: newRating,
-            averageRating: movie.averageRating,
-            totalRatings: movie.totalRatings
+            averageRating: updatedMovie.averageRating,
+            totalRatings: updatedMovie.totalRatings
         });
-    }
-    catch (err) {
+
+    } catch (err) {
         console.error("Rating error:", err);
 
-        res.status(500).json({
+        if (err.code === 11000) {
+            return res.status(400).json({
+                message: "You have already rated this movie."
+            });
+        }
+
+        return res.status(500).json({
             message: err.message
         });
     }
 };
-
 
 const getMovieRatings = async (req, res) => {
     try {
@@ -129,17 +150,14 @@ const getMovieRatings = async (req, res) => {
             });
         }
 
-        res.status(200).json({
-            movie
-        });
-    }
-    catch (err) {
-        res.status(500).json({
+        return res.status(200).json({ movie });
+
+    } catch (err) {
+        return res.status(500).json({
             message: err.message
         });
     }
 };
-
 
 module.exports = {
     rateMovie,

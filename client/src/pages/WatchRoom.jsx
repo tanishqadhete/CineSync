@@ -73,6 +73,37 @@ function WatchRoom() {
   const [ratingLoading, setRatingLoading] = useState(false);
   const [ratingError, setRatingError] = useState("");
   const [ratingSuccess, setRatingSuccess] = useState(false);
+  const ratingSuccessRef = useRef(false);
+  const ratingSubmittingRef = useRef(false);
+  const pendingRoomDeletionRef = useRef(false);
+
+  // The server owns the rating deadline; do not start a fresh
+  // five-minute window when the page reconnects or refreshes.
+  useEffect(() => {
+    if (room?.status !== "ENDED" || !room.deleteAt) return;
+
+    const deadline = new Date(room.deleteAt).getTime();
+    if (!Number.isFinite(deadline)) return;
+
+    const redirectIfExpired = () => {
+      if (ratingSuccessRef.current) return;
+      if (ratingSubmittingRef.current) {
+        pendingRoomDeletionRef.current = true;
+        return;
+      }
+      navigate("/dashboard");
+    };
+
+    const remainingMs = deadline - Date.now();
+    if (remainingMs <= 0) {
+      redirectIfExpired();
+      return;
+    }
+
+    const timer = setTimeout(redirectIfExpired, remainingMs);
+    return () => clearTimeout(timer);
+  }, [room?.status, room?.deleteAt, navigate]);
+
 
   useEffect(() => {
     let cancelled = false;
@@ -83,6 +114,14 @@ function WatchRoom() {
 
         setRoom(data);
         setMovie(data.movie);
+
+        if (
+          data.status === "ENDED" &&
+          data.deleteAt &&
+          new Date(data.deleteAt).getTime() > Date.now()
+        ) {
+          setShowRatingModal(true);
+        }
 
         socket.auth = {
           token: localStorage.getItem("token"),
@@ -108,6 +147,14 @@ function WatchRoom() {
       setMovie(data.movie);
       setMembers(data.members);
       setMessages(data.messages);
+
+      if (
+        data.room.status === "ENDED" &&
+        data.room.deleteAt &&
+        new Date(data.room.deleteAt).getTime() > Date.now()
+      ) {
+        setShowRatingModal(true);
+      }
       const hostNow = String(data.room.currentHost?._id ?? "") === currentUserId;
       isHostRef.current = hostNow;
       setIsHost(hostNow);
@@ -127,7 +174,10 @@ function WatchRoom() {
     };
 
     const handleMemberLeft = (member) => {
-      setMembers((prev) => prev.filter((m) => m.id !== member.id));
+      const departedId = String(member.id ?? member.userId ?? "");
+      setMembers((prev) =>
+        prev.filter((m) => String(m.id) !== departedId)
+      );
     };
 
     const handleNewMessage = (newMessage) => {
@@ -153,10 +203,44 @@ function WatchRoom() {
       setError(data.message);
     };
 
-    const handleRoomEnded = () => {
+    const handleRoomEnded = async () => {
       setRoom((prev) => (prev ? { ...prev, status: "ENDED" } : prev));
-
       setShowRatingModal(true);
+
+      // Fetch the deadline saved by the server. This also covers
+      // room-ended events that do not include deleteAt.
+      try {
+        const latestRoom = await getRoom(roomCode);
+        if (!cancelled) {
+          setRoom((prev) => prev ? {
+            ...prev,
+            status: latestRoom.status,
+            deleteAt: latestRoom.deleteAt
+          } : prev);
+        }
+      } catch (err) {
+        if (!cancelled) console.error("Unable to load rating deadline:", err);
+      }
+    };
+
+    const handleRoomDeleted = () => {
+      if (ratingSuccessRef.current) return;
+      if (ratingSubmittingRef.current) {
+        pendingRoomDeletionRef.current = true;
+        return;
+      }
+      navigate("/dashboard");
+    };
+
+    const handleMemberKicked = (data) => {
+      const kickedId = String(data?.userId ?? data?.id ?? "");
+      if (kickedId === currentUserId) {
+        navigate("/dashboard");
+      } else {
+        setMembers((prev) =>
+          prev.filter((member) => String(member.id) !== kickedId)
+        );
+      }
     };
 
     socket.on("room-state", handleRoomState);
@@ -177,6 +261,8 @@ function WatchRoom() {
     socket.on("host-changed", handleHostChanged);
 
     socket.on("room-ended", handleRoomEnded);
+    socket.on("room-deleted", handleRoomDeleted);
+    socket.on("member-kicked", handleMemberKicked);
     return () => {
       cancelled = true;
       socket.off("room-state", handleRoomState);
@@ -196,6 +282,8 @@ function WatchRoom() {
       socket.off("error-message", handleSocketError);
       socket.off("host-changed", handleHostChanged);
       socket.off("room-ended", handleRoomEnded);
+      socket.off("room-deleted", handleRoomDeleted);
+      socket.off("member-kicked", handleMemberKicked);
       socket.disconnect();
     };
   }, [roomCode, currentUserId, applyPlaybackSync]);
@@ -328,6 +416,7 @@ function WatchRoom() {
     }
 
     try {
+      ratingSubmittingRef.current = true;
       setRatingLoading(true);
       setRatingError("");
       console.log("Rating payload:", {
@@ -337,10 +426,15 @@ function WatchRoom() {
     });
       await submitRating(movie._id, room._id, selectedRating);
 
+      ratingSuccessRef.current = true;
       setRatingSuccess(true);
     } catch (err) {
       setRatingError(err.message);
+      if (pendingRoomDeletionRef.current) {
+        navigate("/dashboard");
+      }
     } finally {
+      ratingSubmittingRef.current = false;
       setRatingLoading(false);
     }
   };
