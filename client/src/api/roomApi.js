@@ -1,5 +1,3 @@
-const API_URL = "https://cinesync-backend-mnq9.onrender.com/api";
-
 export const createRoom = async (
     roomName,
     movieId,
@@ -8,7 +6,7 @@ export const createRoom = async (
     const token = localStorage.getItem("token");
 
     const response = await fetch(
-        `${API_URL}/rooms/create`,
+        `${import.meta.env.VITE_API_URL}/api/rooms/create`,
         {
             method: "POST",
             headers: {
@@ -38,7 +36,7 @@ export const joinRoom = async (roomCode) => {
     const token = localStorage.getItem("token");
 
     const response = await fetch(
-        `${API_URL}/rooms/join`,
+        `${import.meta.env.VITE_API_URL}/api/rooms/join`,
         {
             method: "POST",
             headers: {
@@ -66,7 +64,7 @@ export const getRoom = async (roomCode) => {
     const token = localStorage.getItem("token");
 
     const response = await fetch(
-        `${API_URL}/rooms/${roomCode}`,
+        `${import.meta.env.VITE_API_URL}/api/rooms/${roomCode}`,
         {
             method: "GET",
             headers: {
@@ -90,7 +88,7 @@ export const leaveRoom = async () => {
     const token = localStorage.getItem("token");
 
     const response = await fetch(
-        `${API_URL}/rooms/leave`,
+        `${import.meta.env.VITE_API_URL}/api/rooms/leave`,
         {
             method: "POST",
             headers: {
@@ -115,7 +113,7 @@ export const kickMember = async (userId) => {
     const token = localStorage.getItem("token");
 
     const response = await fetch(
-        `${API_URL}/rooms/kick`,
+        `${import.meta.env.VITE_API_URL}/api/rooms/kick`,
         {
             method: "POST",
             headers: {

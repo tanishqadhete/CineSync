@@ -1,4 +1,8 @@
-require("dotenv").config();
+require("dotenv").config({
+    path: process.env.NODE_ENV === "production"
+        ? ".env.production"
+        : ".env.development"
+});
 const express = require("express");
 const cors = require("cors");
 const http = require("http");
@@ -32,7 +36,6 @@ const io = new Server(server, {
 });
 io.use(socketAuthMiddleware);
 socketHandler(io);
-
 
 const PORT = process.env.PORT || 5000;
 

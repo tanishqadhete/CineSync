@@ -1,7 +1,19 @@
 const Room = require("../models/Room");
 const RoomMember = require("../models/RoomMember");
 const Message = require("../models/Message");
+const getPlaybackPosition = (room, now = Date.now()) => {
+    const position = Number(room.currentTime) || 0;
 
+    if (!room.isPlaying) {
+        return position;
+    }
+
+    const updatedAt = room.playbackUpdatedAt
+        ? new Date(room.playbackUpdatedAt).getTime()
+        : now;
+
+    return position + Math.max(0, now - updatedAt) / 1000;
+};
 module.exports = (io, socket) => {
 
     socket.on("join-room", async (roomCode) => {
@@ -66,6 +78,7 @@ module.exports = (io, socket) => {
         room.currentHost._id.toString() ===
             socket.user._id.toString(),
                 room: {
+                    _id: room._id,
                     roomCode: room.roomCode,
                     roomName: room.roomName,
                     maxMembers: room.maxMembers,
@@ -76,8 +89,10 @@ module.exports = (io, socket) => {
                 movie: room.movieId,
 
                 playback: {
-                    currentTime: room.currentTime,
-                    isPlaying: room.isPlaying
+                    currentTime: getPlaybackPosition(room),
+                    isPlaying: room.isPlaying,
+                    serverTime: Date.now(),
+                    version: room.playbackVersion
                 },
 
                 members: members.map(member => ({

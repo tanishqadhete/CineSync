@@ -1,16 +1,9 @@
-const API_URL = "https://cinesync-backend-mnq9.onrender.com/api";
-
-
-// =========================
-// GET ALL MOVIES
-// =========================
-
 export const getAdminMovies = async () => {
 
     const token = localStorage.getItem("token");
 
     const response = await fetch(
-        `${API_URL}/movies/admin/all`,
+        `${import.meta.env.VITE_API_URL}/api/movies/admin`,
         {
             method: "GET",
 
@@ -32,17 +25,12 @@ export const getAdminMovies = async () => {
     return data;
 };
 
-
-// =========================
-// GET MOVIE STATISTICS
-// =========================
-
 export const getMovieStats = async () => {
 
     const token = localStorage.getItem("token");
 
     const response = await fetch(
-        `${API_URL}/movies/stats`,
+        `${import.meta.env.VITE_API_URL}/api/movies/stats`,
         {
             method: "GET",
 
@@ -64,17 +52,12 @@ export const getMovieStats = async () => {
     return data;
 };
 
-
-// =========================
-// ADD MOVIE
-// =========================
-
 export const addMovie = async (movieData) => {
 
     const token = localStorage.getItem("token");
 
     const response = await fetch(
-        `${API_URL}/movies`,
+        `${import.meta.env.VITE_API_URL}/api/movies`,
         {
             method: "POST",
 
@@ -99,11 +82,6 @@ export const addMovie = async (movieData) => {
     return data;
 };
 
-
-// =========================
-// UPDATE MOVIE
-// =========================
-
 export const updateMovie = async (
     movieId,
     movieData
@@ -112,7 +90,7 @@ export const updateMovie = async (
     const token = localStorage.getItem("token");
 
     const response = await fetch(
-        `${API_URL}/movies/${movieId}`,
+        `${import.meta.env.VITE_API_URL}/api/movies/${movieId}`,
         {
             method: "PUT",
 
@@ -137,17 +115,12 @@ export const updateMovie = async (
     return data;
 };
 
-
-// =========================
-// DELETE MOVIE
-// =========================
-
 export const deleteMovie = async (movieId) => {
 
     const token = localStorage.getItem("token");
 
     const response = await fetch(
-        `${API_URL}/movies/${movieId}`,
+        `${import.meta.env.VITE_API_URL}/api/movies/${movieId}`,
         {
             method: "DELETE",
 

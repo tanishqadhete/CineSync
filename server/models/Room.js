@@ -45,6 +45,14 @@ const roomSchema = new mongoose.Schema(
         type: Boolean,
         default: false
     },
+    playbackUpdatedAt: {
+        type: Date,
+        default: Date.now
+    },
+    playbackVersion: {
+        type: Number,
+        default: 0
+    },
     status: {
         type: String,
         enum: ["ACTIVE", "ENDED", "DELETED"],

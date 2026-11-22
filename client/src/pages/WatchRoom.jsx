@@ -1,767 +1,635 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getRoom, leaveRoom, kickMember } from "../api/roomApi";
+import { submitRating } from "../api/ratingApi";
 import EmojiPicker from "emoji-picker-react";
 import socket from "../socket";
 
 function WatchRoom() {
-    const { roomCode } = useParams();
-    const navigate = useNavigate();
+  const { roomCode } = useParams();
+  const navigate = useNavigate();
 
-    const [room, setRoom] = useState(null);
-    const [movie, setMovie] = useState(null);
-    const [members, setMembers] = useState([]);
-    const [messages, setMessages] = useState([]);
-    const [playback, setPlayback] = useState({
-        currentTime: 0,
-        isPlaying: false
-    });
+  const [room, setRoom] = useState(null);
+  const [movie, setMovie] = useState(null);
+  const [members, setMembers] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [playback, setPlayback] = useState({
+    currentTime: 0,
+    isPlaying: false,
+  });
 
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
-    const [message, setMessage] = useState("");
-    const [videoReady, setVideoReady] = useState(false);
-    const [isHost, setIsHost] = useState(false);
-    const [activeTab, setActiveTab] = useState("chat");
-    const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-    const chatMessagesRef = useRef(null);
-    const videoRef = useRef(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [videoReady, setVideoReady] = useState(false);
+  const [isHost, setIsHost] = useState(false);
+  const [activeTab, setActiveTab] = useState("chat");
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const chatMessagesRef = useRef(null);
+  const videoRef = useRef(null);
 
-    useEffect(() => {
-        const connectToRoom = async () => {
-            try {
-                const data = await getRoom(roomCode);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [selectedRating, setSelectedRating] = useState(0);
+  const [ratingLoading, setRatingLoading] = useState(false);
+  const [ratingError, setRatingError] = useState("");
+  const [ratingSuccess, setRatingSuccess] = useState(false);
 
-                setRoom(data);
-                setMovie(data.movie);
+  useEffect(() => {
+    const connectToRoom = async () => {
+      try {
+        const data = await getRoom(roomCode);
 
-                socket.auth = {
-                    token: localStorage.getItem("token")
-                };
+        setRoom(data);
+        setMovie(data.movie);
 
-                socket.connect();
-
-                socket.emit("join-room", roomCode);
-            } catch (err) {
-                setError(err.message);
-                setLoading(false);
-            }
+        socket.auth = {
+          token: localStorage.getItem("token"),
         };
 
-        connectToRoom();
+        socket.connect();
 
-        const handleRoomState = (data) => {
-            console.log("SOCKET ROOM STATE:", data);
+        socket.emit("join-room", roomCode);
+      } catch (err) {
+        setError(err.message);
+        setLoading(false);
+      }
+    };
 
-            setRoom(data.room);
-            setMovie(data.movie);
-            setMembers(data.members);
-            setMessages(data.messages);
-            setPlayback(data.playback);
+    connectToRoom();
 
-            const currentUser = JSON.parse(
-                localStorage.getItem("user")
-            );
+    const handleRoomState = (data) => {
+      console.log("SOCKET ROOM STATE:", data);
 
-            if (
-                currentUser &&
-                data.room.currentHost &&
-                data.room.currentHost._id === currentUser.id
-            ) {
-                setIsHost(true);
-            } else {
-                setIsHost(false);
-            }
+      setRoom(data.room);
+      setMovie(data.movie);
+      setMembers(data.members);
+      setMessages(data.messages);
+      setPlayback(data.playback);
 
-            setLoading(false);
-        };
+      const currentUser = JSON.parse(localStorage.getItem("user"));
 
-        const handleMemberJoined = (member) => {
-            setMembers((prev) => {
-                if (prev.some((m) => m.id === member.id)) {
-                    return prev;
-                }
+      if (
+        currentUser &&
+        data.room.currentHost &&
+        data.room.currentHost._id === currentUser.id
+      ) {
+        setIsHost(true);
+      } else {
+        setIsHost(false);
+      }
 
-                return [...prev, member];
-            });
-        };
+      setLoading(false);
+    };
 
-        const handleMemberLeft = (member) => {
-            setMembers((prev) =>
-                prev.filter((m) => m.id !== member.id)
-            );
-        };
+    const handleMemberJoined = (member) => {
+      setMembers((prev) => {
+        if (prev.some((m) => m.id === member.id)) {
+          return prev;
+        }
 
-        const handleNewMessage = (newMessage) => {
-            setMessages((prev) => [
-                ...prev,
-                newMessage
-            ]);
-        };
+        return [...prev, member];
+      });
+    };
 
-        const handlePlaybackUpdated = (data) => {
-            const video = videoRef.current;
+    const handleMemberLeft = (member) => {
+      setMembers((prev) => prev.filter((m) => m.id !== member.id));
+    };
 
-            setPlayback({
-                currentTime: data.currentTime,
-                isPlaying: data.isPlaying
-            });
+    const handleNewMessage = (newMessage) => {
+      setMessages((prev) => [...prev, newMessage]);
+    };
 
-            if (!video || isHost) {
-                return;
-            }
+    const handlePlaybackUpdated = (data) => {
+      const video = videoRef.current;
 
-            video.currentTime = data.currentTime;
+      setPlayback({
+        currentTime: data.currentTime,
+        isPlaying: data.isPlaying,
+      });
 
-            if (data.isPlaying) {
-                if (!videoReady) {
-                    return;
-                }
+      if (!video || isHost) {
+        return;
+      }
 
-                video.play().catch((err) => {
-                    console.error(
-                        "Unable to play video:",
-                        err
-                    );
-                });
-            } else {
-                video.pause();
-            }
-        };
+      video.currentTime = data.currentTime;
 
-        const handlePlaybackSeeked = (data) => {
-            const video = videoRef.current;
+      if (data.isPlaying) {
+        if (!videoReady) {
+          return;
+        }
 
-            setPlayback((prev) => ({
-                ...prev,
-                currentTime: data.currentTime
-            }));
+        video.play().catch((err) => {
+          console.error("Unable to play video:", err);
+        });
+      } else {
+        video.pause();
+      }
+    };
 
-            if (!video || isHost) {
-                return;
-            }
+    const handlePlaybackSeeked = (data) => {
+      const video = videoRef.current;
 
-            video.currentTime = data.currentTime;
-        };
+      setPlayback((prev) => ({
+        ...prev,
+        currentTime: data.currentTime,
+      }));
 
-        const handleKickMember = async (userId) => {
-            try {
-                await kickMember(userId);
+      if (!video || isHost) {
+        return;
+      }
 
-                setMembers((prev) =>
-                    prev.filter(
-                        (member) => member.id !== userId
-                    )
-                );
-            } catch (err) {
-                console.error(
-                    "Unable to remove member:",
-                    err.message
-                );
-            }
-        };
+      video.currentTime = data.currentTime;
+    };
 
-        const handleSocketError = (data) => {
-            console.error("SOCKET ERROR:", data);
-            setError(data.message);
-        };
+    const handleKickMember = async (userId) => {
+      try {
+        await kickMember(userId);
 
-        socket.on(
-            "room-state",
-            handleRoomState
-        );
+        setMembers((prev) => prev.filter((member) => member.id !== userId));
+      } catch (err) {
+        console.error("Unable to remove member:", err.message);
+      }
+    };
 
-        socket.on(
-            "member-joined",
-            handleMemberJoined
-        );
+    const handleSocketError = (data) => {
+      console.error("SOCKET ERROR:", data);
+      setError(data.message);
+    };
 
-        socket.on(
-            "member-left",
-            handleMemberLeft
-        );
+    const handleRoomEnded = () => {
+      setRoom((prev) => (prev ? { ...prev, status: "ENDED" } : prev));
 
-        socket.on(
-            "new-message",
-            handleNewMessage
-        );
+      setShowRatingModal(true);
+    };
 
-        socket.on(
-            "playback-updated",
-            handlePlaybackUpdated
-        );
+    socket.on("room-state", handleRoomState);
 
-        socket.on(
-            "playback-seeked",
-            handlePlaybackSeeked
-        );
+    socket.on("member-joined", handleMemberJoined);
 
-        socket.on(
-            "error-message",
-            handleSocketError
-        );
+    socket.on("member-left", handleMemberLeft);
 
-        socket.on(
-            "host-changed",
-            handleHostChanged
-        );
-        return () => {
-            socket.off(
-                "room-state",
-                handleRoomState
-            );
+    socket.on("new-message", handleNewMessage);
 
-            socket.off(
-                "member-joined",
-                handleMemberJoined
-            );
+    socket.on("playback-updated", handlePlaybackUpdated);
 
-            socket.off(
-                "member-left",
-                handleMemberLeft
-            );
+    socket.on("playback-seeked", handlePlaybackSeeked);
 
-            socket.off(
-                "new-message",
-                handleNewMessage
-            );
+    socket.on("error-message", handleSocketError);
 
-            socket.off(
-                "playback-updated",
-                handlePlaybackUpdated
-            );
+    socket.on("host-changed", handleHostChanged);
 
-            socket.off(
-                "playback-seeked",
-                handlePlaybackSeeked
-            );
+    socket.on("room-ended", handleRoomEnded);
+    return () => {
+      socket.off("room-state", handleRoomState);
 
-            socket.off(
-                "error-message",
-                handleSocketError
-            );
-            socket.off(
-            "host-changed",
-            handleHostChanged
-        );
-            socket.disconnect();
-        };
-    }, [roomCode, isHost, videoReady]);
+      socket.off("member-joined", handleMemberJoined);
 
-    useEffect(() => {
+      socket.off("member-left", handleMemberLeft);
+
+      socket.off("new-message", handleNewMessage);
+
+      socket.off("playback-updated", handlePlaybackUpdated);
+
+      socket.off("playback-seeked", handlePlaybackSeeked);
+
+      socket.off("error-message", handleSocketError);
+      socket.off("host-changed", handleHostChanged);
+      socket.off("room-ended", handleRoomEnded);
+      socket.disconnect();
+    };
+  }, [roomCode, isHost, videoReady]);
+
+  useEffect(() => {
     const chatMessages = chatMessagesRef.current;
 
     if (!chatMessages) {
-        return;
+      return;
     }
 
     chatMessages.scrollTo({
-        top: chatMessages.scrollHeight,
-        behavior: "smooth"
+      top: chatMessages.scrollHeight,
+      behavior: "smooth",
     });
-}, [messages]);
-    const handleJoinPlayback = async () => {
-        const video = videoRef.current;
+  }, [messages]);
+  const handleJoinPlayback = async () => {
+    const video = videoRef.current;
 
-        if (!video) {
-            return;
-        }
-
-        setVideoReady(true);
-
-        video.currentTime = playback.currentTime;
-
-        if (playback.isPlaying) {
-            try {
-                await video.play();
-            } catch (err) {
-                console.error(
-                    "Unable to start playback:",
-                    err
-                );
-            }
-        }
-    };
-
-    const handleVideoPlay = () => {
-        if (!isHost || !videoRef.current) {
-            return;
-        }
-
-        const currentTime =
-            videoRef.current.currentTime;
-
-        setPlayback({
-            currentTime,
-            isPlaying: true
-        });
-
-        socket.emit("play-pause", {
-            isPlaying: true,
-            currentTime
-        });
-    };
-
-    const handleVideoPause = () => {
-        if (!isHost || !videoRef.current) {
-            return;
-        }
-
-        const currentTime =
-            videoRef.current.currentTime;
-
-        setPlayback({
-            currentTime,
-            isPlaying: false
-        });
-
-        socket.emit("play-pause", {
-            isPlaying: false,
-            currentTime
-        });
-    };
-
-    const handleVideoSeek = () => {
-        if (!isHost || !videoRef.current) {
-            return;
-        }
-
-        const currentTime =
-            videoRef.current.currentTime;
-
-        setPlayback((prev) => ({
-            ...prev,
-            currentTime
-        }));
-
-        socket.emit(
-            "seek",
-            currentTime
-        );
-    };
-
-    const handleLeaveRoom = async () => {
-        try {
-            await leaveRoom();
-
-            socket.disconnect();
-
-            navigate("/dashboard");
-        } catch (err) {
-            setError(err.message);
-        }
-    };
-
-    const handleSendMessage = (e) => {
-        e.preventDefault();
-
-        if (!message.trim()) {
-            return;
-        }
-
-        socket.emit(
-            "send-message",
-            message
-        );
-
-        setMessage("");
-    };
-    const handleEmojiClick = (emojiData) => {
-        setMessage((prev) => prev + emojiData.emoji);
-    };
-
-    const handleHostChanged = (host) => {
-        console.log("NEW HOST:", host);
-
-        setRoom((prev) => ({
-            ...prev,
-            currentHost: {
-                _id: host.id,
-                username: host.username
-            }
-        }));
-
-        setIsHost(
-            host.id === localStorage.getItem("userId")
-        );
-    };
-
-    const handleVideoEnded = () => {
-        if (isHost) {
-            socket.emit("video-ended");
-        }
-    };
-
-    if (loading) {
-        return (
-            <div className="watch-room">
-                <div className="room-loading">
-                    Loading room...
-                </div>
-            </div>
-        );
+    if (!video) {
+      return;
     }
 
-    if (error) {
-        return (
-            <div className="watch-room">
-                <div className="room-error">
-                    {error}
-                </div>
-            </div>
-        );
+    setVideoReady(true);
+
+    video.currentTime = playback.currentTime;
+
+    if (playback.isPlaying) {
+      try {
+        await video.play();
+      } catch (err) {
+        console.error("Unable to start playback:", err);
+      }
+    }
+  };
+
+  const handleVideoPlay = () => {
+    if (!isHost || !videoRef.current) {
+      return;
     }
 
-    if (!room || !movie) {
-        return null;
+    const currentTime = videoRef.current.currentTime;
+
+    setPlayback({
+      currentTime,
+      isPlaying: true,
+    });
+
+    socket.emit("play-pause", {
+      isPlaying: true,
+      currentTime,
+    });
+  };
+
+  const handleVideoPause = () => {
+    if (!isHost || !videoRef.current) {
+      return;
     }
 
+    const currentTime = videoRef.current.currentTime;
+
+    setPlayback({
+      currentTime,
+      isPlaying: false,
+    });
+
+    socket.emit("play-pause", {
+      isPlaying: false,
+      currentTime,
+    });
+  };
+
+  const handleVideoSeek = () => {
+    if (!isHost || !videoRef.current) {
+      return;
+    }
+
+    const currentTime = videoRef.current.currentTime;
+
+    setPlayback((prev) => ({
+      ...prev,
+      currentTime,
+    }));
+
+    socket.emit("seek", currentTime);
+  };
+
+  const handleLeaveRoom = async () => {
+    try {
+      await leaveRoom();
+
+      socket.disconnect();
+
+      navigate("/dashboard");
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleSendMessage = (e) => {
+    e.preventDefault();
+
+    if (!message.trim()) {
+      return;
+    }
+
+    socket.emit("send-message", message);
+
+    setMessage("");
+  };
+  const handleEmojiClick = (emojiData) => {
+    setMessage((prev) => prev + emojiData.emoji);
+  };
+
+  const handleHostChanged = (host) => {
+    console.log("NEW HOST:", host);
+
+    setRoom((prev) => ({
+      ...prev,
+      currentHost: {
+        _id: host.id,
+        username: host.username,
+      },
+    }));
+
+    setIsHost(host.id === localStorage.getItem("userId"));
+  };
+
+  const handleSubmitRating = async () => {
+    if (selectedRating === 0 || !room || !movie) {
+      return;
+    }
+
+    try {
+      setRatingLoading(true);
+      setRatingError("");
+      console.log("Rating payload:", {
+        movieId: movie?._id,
+        roomId: room?._id,
+        rating: selectedRating
+    });
+      await submitRating(movie._id, room._id, selectedRating);
+
+      setRatingSuccess(true);
+    } catch (err) {
+      setRatingError(err.message);
+    } finally {
+      setRatingLoading(false);
+    }
+  };
+
+  const handleVideoEnded = () => {
+    if (isHost) {
+      socket.emit("video-ended");
+    }
+  };
+
+  if (loading) {
     return (
-        <div className="watch-room">
+      <div className="watch-room">
+        <div className="room-loading">Loading room...</div>
+      </div>
+    );
+  }
 
-            {/* =========================
+  if (error) {
+    return (
+      <div className="watch-room">
+        <div className="room-error">{error}</div>
+      </div>
+    );
+  }
+
+  if (!room || !movie) {
+    return null;
+  }
+
+  return (
+    <div className="watch-room">
+      {/* =========================
                 HEADER
             ========================= */}
 
-            <header className="room-header">
+      <header className="room-header">
+        <div className="room-header-left">
+          <h1>
+            Cine<span>Sync</span>
+          </h1>
 
+          <p>
+            {room.roomName}
+            {" • "}
+            Room Code: <strong>{room.roomCode}</strong>
+          </p>
+        </div>
 
-                <div className="room-header-left">
-                    <h1>
-    Cine<span>Sync</span>
-</h1>
+        <button className="leave-room-button" onClick={handleLeaveRoom}>
+          Leave Room
+        </button>
+      </header>
 
-                    <p>
-                        {room.roomName}
-                        {" • "}
-                        Room Code:{" "}
-                        <strong>
-                            {room.roomCode}
-                        </strong>
-                    </p>
-                </div>
-
-                <button
-                    className="leave-room-button"
-                    onClick={handleLeaveRoom}
-                >
-                    Leave Room
-                </button>
-
-            </header>
-
-            {/* =========================
+      {/* =========================
                 MAIN CONTENT
             ========================= */}
 
-            <main className="watch-room-content">
-
-                {/* =========================
+      <main className="watch-room-content">
+        {/* =========================
                     VIDEO SECTION
                 ========================= */}
 
-                <section className="video-section">
+        <section className="video-section">
+          {!isHost && !videoReady && (
+            <div className="playback-overlay">
+              <p>Click below to join synchronized playback.</p>
 
-                    {!isHost && !videoReady && (
-                        <div className="playback-overlay">
+              <button onClick={handleJoinPlayback}>Join Playback</button>
+            </div>
+          )}
 
-                            <p>
-                                Click below to join synchronized playback.
-                            </p>
+          <video
+            ref={videoRef}
+            controls={isHost}
+            width="100%"
+            poster={movie.thumbnail}
+            onPlay={isHost ? handleVideoPlay : undefined}
+            onPause={isHost ? handleVideoPause : undefined}
+            onSeeked={isHost ? handleVideoSeek : undefined}
+            onEnded={isHost ? handleVideoEnded : undefined}
+          >
+            <source src={movie.videoUrl} type="video/mp4" />
+            Your browser does not support video playback.
+          </video>
 
-                            <button
-                                onClick={handleJoinPlayback}
-                            >
-                                Join Playback
-                            </button>
+          <div className="movie-details">
+            <h2>{movie.title}</h2>
 
-                        </div>
-                    )}
+            <p>{movie.description}</p>
+          </div>
+        </section>
 
-                    <video
-                        ref={videoRef}
-                        controls={isHost}
-                        width="100%"
-                        poster={movie.thumbnail}
-                        onPlay={
-                            isHost
-                                ? handleVideoPlay
-                                : undefined
-                        }
-                        onPause={
-                            isHost
-                                ? handleVideoPause
-                                : undefined
-                        }
-                        onSeeked={
-                            isHost
-                                ? handleVideoSeek
-                                : undefined
-                        }
-                        onEnded={
-                            isHost
-                                ? handleVideoEnded
-                                : undefined
-                        }
-                    >
-
-                        <source
-                            src={movie.videoUrl}
-                            type="video/mp4"
-                        />
-
-                        Your browser does not support video playback.
-
-                    </video>
-
-                    <div className="movie-details">
-
-                        <h2>
-                            {movie.title}
-                        </h2>
-
-                        <p>
-                            {movie.description}
-                        </p>
-
-                    </div>
-
-                </section>
-
-                {/* =========================
+        {/* =========================
                     SIDEBAR
                 ========================= */}
 
-                <aside className="room-sidebar">
+        <aside className="room-sidebar">
+          {/* Tabs */}
 
-                    {/* Tabs */}
+          <div className="sidebar-tabs">
+            <button
+              className={activeTab === "members" ? "active" : ""}
+              onClick={() => setActiveTab("members")}
+            >
+              Members
+            </button>
 
-                    <div className="sidebar-tabs">
+            <button
+              className={activeTab === "chat" ? "active" : ""}
+              onClick={() => setActiveTab("chat")}
+            >
+              Chat
+            </button>
 
-                        <button
-                            className={
-                                activeTab === "members"
-                                    ? "active"
-                                    : ""
-                            }
-                            onClick={() =>
-                                setActiveTab("members")
-                            }
-                        >
-                            Members
-                        </button>
+            <div
+              className={`tab-slider ${
+                activeTab === "chat" ? "slide-right" : ""
+              }`}
+            />
+          </div>
 
-                        <button
-                            className={
-                                activeTab === "chat"
-                                    ? "active"
-                                    : ""
-                            }
-                            onClick={() =>
-                                setActiveTab("chat")
-                            }
-                        >
-                            Chat
-                        </button>
-
-                        <div
-                            className={`tab-slider ${
-                                activeTab === "chat"
-                                    ? "slide-right"
-                                    : ""
-                            }`}
-                        />
-
-                    </div>
-
-                    {/* =========================
+          {/* =========================
                         MEMBERS
                     ========================= */}
 
-                    {activeTab === "members" && (
-                        <div className="members-panel">
+          {activeTab === "members" && (
+            <div className="members-panel">
+              <div className="members-heading">
+                <h2>Active Members</h2>
 
-                            <div className="members-heading">
+                <span>{members.length}</span>
+              </div>
 
-                                <h2>
-                                    Active Members
-                                </h2>
+              <div className="members-list">
+                {members.map((member) => (
+                  <div className="member" key={member.id}>
+                    <span className="member-dot">●</span>
 
-                                <span>
-                                    {members.length}
-                                </span>
+                    <span className="member-name">{member.username}</span>
 
-                            </div>
-
-                            <div className="members-list">
-
-                                {members.map((member) => (
-                                    <div
-                                        className="member"
-                                        key={member.id}
-                                    >
-
-                                        <span className="member-dot">
-                                            ●
-                                        </span>
-
-                                        <span className="member-name">
-                                            {member.username}
-                                        </span>
-
-                                        {room.currentHost?._id === member.id && (
-                                            <span className="host-label">
-                                                Host
-                                            </span>
-                                        )}
-
-                                    </div>
-                                ))}
-
-                            </div>
-
-                        </div>
+                    {room.currentHost?._id === member.id && (
+                      <span className="host-label">Host</span>
                     )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-                    {/* =========================
+          {/* =========================
                         CHAT
                     ========================= */}
 
-                    {activeTab === "chat" && (
-                        <div className="chat-section">
+          {activeTab === "chat" && (
+            <div className="chat-section">
+              <div className="chat-messages" ref={chatMessagesRef}>
+                {messages.length === 0 ? (
+                  <div className="empty-chat">
+                    <div className="empty-chat-icon">💬</div>
 
-                            <div className="chat-messages" ref={chatMessagesRef}>
+                    <p>No messages yet.</p>
 
-                                {messages.length === 0 ? (
+                    <span>Start the conversation.</span>
+                  </div>
+                ) : (
+                  messages.map((msg) => (
+                    <div className="chat-message" key={msg.id}>
+                      <div className="chat-message-header">
+                        <strong>{msg.username}</strong>
+                      </div>
 
-                                    <div className="empty-chat">
+                      <div className="chat-message-body">
+                        <p>{msg.text}</p>
 
-                                        <div className="empty-chat-icon">
-                                            💬
-                                        </div>
+                        <span className="message-time">
+                          {new Date(msg.createdAt).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: false,
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
 
-                                        <p>
-                                            No messages yet.
-                                        </p>
+              {/* Fixed chat input */}
 
-                                        <span>
-                                            Start the conversation.
-                                        </span>
+              <div className="chat-input-wrapper">
+                {showEmojiPicker && (
+                  <div className="emoji-picker-container">
+                    <EmojiPicker
+                      onEmojiClick={handleEmojiClick}
+                      theme="dark"
+                      searchDisabled={false}
+                      skinTonesDisabled={false}
+                      height={350}
+                      width={300}
+                    />
+                  </div>
+                )}
 
-                                    </div>
+                <form className="chat-form" onSubmit={handleSendMessage}>
+                  <button
+                    type="button"
+                    className="emoji-button"
+                    onClick={() => setShowEmojiPicker((prev) => !prev)}
+                    aria-label="Open emoji picker"
+                  >
+                    😊
+                  </button>
 
-                                ) : (
+                  <input
+                    type="text"
+                    placeholder="Type a message..."
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    onFocus={() => {
+                      // Keep picker closed when typing
+                    }}
+                  />
 
-                                    messages.map((msg) => (
+                  <button
+                    type="submit"
+                    className="send-button"
+                    aria-label="Send message"
+                  >
+                    ➤
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
+        </aside>
+      </main>
 
-                                        <div
-                                            className="chat-message"
-                                            key={msg.id}
-                                        >
+      {showRatingModal && (
+        <div className="rating-overlay">
+          <div className="rating-modal">
+            {ratingSuccess ? (
+              <>
+                <h2>Thank you for rating!</h2>
+                <p>Your rating has been saved.</p>
 
-                                            <div className="chat-message-header">
+                <button
+                  className="submit-rating-button"
+                  onClick={() => navigate("/dashboard")}
+                >
+                  Back to Dashboard
+                </button>
+              </>
+            ) : (
+              <>
+                <h2>How was the movie?</h2>
+                <p>Rate {movie.title}</p>
 
-                                                <strong>
-                                                    {msg.username}
-                                                </strong>
+                <div className="rating-stars">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      className={selectedRating >= star ? "selected" : ""}
+                      onClick={() => setSelectedRating(star)}
+                      aria-label={`Rate ${star} stars`}
+                    >
+                      ★
+                    </button>
+                  ))}
+                </div>
 
-                                            </div>
+                {ratingError && <p className="rating-error">{ratingError}</p>}
 
-                                            <div className="chat-message-body">
-
-                                                <p>
-                                                    {msg.text}
-                                                </p>
-
-                                                <span className="message-time">
-                                                    {new Date(
-                                                        msg.createdAt
-                                                    ).toLocaleTimeString(
-                                                        [],
-                                                        {
-                                                            hour: "2-digit",
-                                                            minute: "2-digit",
-                                                            hour12: false
-                                                        }
-                                                    )}
-                                                </span>
-
-                                            </div>
-
-                                        </div>
-
-                                    ))
-
-                                )}
-
-                            </div>
-
-                            {/* Fixed chat input */}
-
-                            <div className="chat-input-wrapper">
-
-    {showEmojiPicker && (
-        <div className="emoji-picker-container">
-            <EmojiPicker
-                onEmojiClick={handleEmojiClick}
-                theme="dark"
-                searchDisabled={false}
-                skinTonesDisabled={false}
-                height={350}
-                width={300}
-            />
+                <button
+                  className="submit-rating-button"
+                  onClick={handleSubmitRating}
+                  disabled={selectedRating === 0 || ratingLoading}
+                >
+                  {ratingLoading ? "Submitting..." : "Submit Rating"}
+                </button>
+              </>
+            )}
+          </div>
         </div>
-    )}
-
-    <form
-        className="chat-form"
-        onSubmit={handleSendMessage}
-    >
-
-        <button
-            type="button"
-            className="emoji-button"
-            onClick={() =>
-                setShowEmojiPicker((prev) => !prev)
-            }
-            aria-label="Open emoji picker"
-        >
-            😊
-        </button>
-
-        <input
-            type="text"
-            placeholder="Type a message..."
-            value={message}
-            onChange={(e) =>
-                setMessage(e.target.value)
-            }
-            onFocus={() => {
-                // Keep picker closed when typing
-            }}
-        />
-
-        <button
-            type="submit"
-            className="send-button"
-            aria-label="Send message"
-        >
-            ➤
-        </button>
-
-    </form>
-
-</div>
-
-                        </div>
-                    )}
-
-                </aside>
-
-            </main>
-
-        </div>
-    );
+      )}
+    </div>
+  );
 }
 
 export default WatchRoom;

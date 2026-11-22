@@ -1,9 +1,7 @@
-const API_URL = "https://cinesync-backend-mnq9.onrender.com/api";
-
 export const loginUser = async (email, password) => {
 
     const response = await fetch(
-        `${API_URL}/auth/login`,
+        `${import.meta.env.VITE_API_URL}/api/auth/login`,
         {
             method: "POST",
             headers: {
@@ -35,7 +33,7 @@ export const registerUser = async (
 ) => {
 
     const response = await fetch(
-        `${API_URL}/auth/register`,
+        `${import.meta.env.VITE_API_URL}/api/auth/register`,
         {
             method: "POST",
             headers: {

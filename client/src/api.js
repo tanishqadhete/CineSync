@@ -1,8 +1,6 @@
-const API_URL = "https://cinesync-backend-mnq9.onrender.com/api";
-
 export const loginUser = async (email, password) => {
 
-    const response = await fetch(`${API_URL}/auth/login`, {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -28,7 +26,7 @@ export const registerUser = async (
     password
 ) => {
 
-    const response = await fetch(`${API_URL}/auth/register`, {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/register`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -54,7 +52,7 @@ export const getMovies = async () => {
     const token = localStorage.getItem("token");
 
     const response = await fetch(
-        "https://cinesync-backend-mnq9.onrender.com/api/movies",
+        `${import.meta.env.VITE_API_URL}/api/movies`,
         {
             method: "GET",
             headers: {
@@ -83,7 +81,7 @@ export const createRoom = async (
     const token = localStorage.getItem("token");
 
     const response = await fetch(
-        `${API_URL}/rooms/create`,
+        `${import.meta.env.VITE_API_URL}/api/rooms/create`,
         {
             method: "POST",
             headers: {
@@ -114,7 +112,7 @@ export const joinRoom = async (roomCode) => {
     const token = localStorage.getItem("token");
 
     const response = await fetch(
-        `${API_URL}/rooms/join`,
+        `${import.meta.env.VITE_API_URL}/api/rooms/join`,
         {
             method: "POST",
             headers: {

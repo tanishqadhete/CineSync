@@ -10,16 +10,16 @@ const {
 
 router.post("/register", register);
 router.post("/login", login);
-router.get("/me", authMiddleware, getCurrentUser);
-router.get(
-    "/admin-test",
-    authMiddleware,
-    adminMiddleware,
-    (req, res) => {
-        res.json({
-            message: "Welcome Admin!"
-        });
-    }
-);
+// router.get("/me", authMiddleware, getCurrentUser);
+// router.get(
+//     "/admin-test",
+//     authMiddleware,
+//     adminMiddleware,
+//     (req, res) => {
+//         res.json({
+//             message: "Welcome Admin!"
+//         });
+//     }
+// );
 
 module.exports = router;

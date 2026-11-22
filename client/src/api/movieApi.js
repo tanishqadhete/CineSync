@@ -1,11 +1,9 @@
-const API_URL = "https://cinesync-backend-mnq9.onrender.com/api";
-
 export const getMovies = async () => {
 
     const token = localStorage.getItem("token");
 
     const response = await fetch(
-        `${API_URL}/movies`,
+        `${import.meta.env.VITE_API_URL}/api/movies`,
         {
             method: "GET",
             headers: {

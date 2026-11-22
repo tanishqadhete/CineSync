@@ -1,39 +1,26 @@
-const API_URL = "https://cinesync-backend-mnq9.onrender.com/api";
+export const submitRating = async (movieId, roomId, rating) => {
+    const token = localStorage.getItem("token");
 
-// =========================
-// SUBMIT MOVIE RATING
-// =========================
-
-export const submitRating = async (movieId, stars) => {
-
-const token = localStorage.getItem("token");
-
-const response = await fetch(
-    `${API_URL}/ratings`,
-    {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/ratings`, {
         method: "POST",
-
         headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`
         },
-
         body: JSON.stringify({
             movieId,
-            stars
+            roomId,
+            rating
         })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(
+            data.message || "Failed to submit rating."
+        );
     }
-);
 
-const data = await response.json();
-
-if (!response.ok) {
-    throw new Error(
-        data.message ||
-        "Failed to submit rating."
-    );
-}
-
-return data;
-
+    return data;
 };
