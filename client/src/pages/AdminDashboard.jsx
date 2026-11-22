@@ -1,3 +1,5 @@
+import "../styles/dashboard.css";
+import "../styles/admin.css";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -273,29 +275,21 @@ function AdminDashboard() {
 
 
     return (
-        <div className="admin-page">
+        <div className="admin-page dashboard">
+
+            <div className="dashboard-glow" />
 
             {/* =========================
                 HEADER
             ========================= */}
 
-            <header className="admin-header">
+            <header className="dashboard-header admin-header">
 
-                <div>
-
-                    <div className="admin-brand">
-                        Cine<span>Sync</span>
-                    </div>
-
-                    <p className="admin-subtitle">
-                        Admin Dashboard
-                    </p>
-
-                </div>
+                <div className="brand">Cine<span>Sync</span></div>
 
 
                 <button
-                    className="admin-logout-button"
+                    className="logout-button admin-logout-button"
                     onClick={handleLogout}
                 >
                     Logout
@@ -308,18 +302,18 @@ function AdminDashboard() {
                 MAIN CONTENT
             ========================= */}
 
-            <main className="admin-content">
+            <main className="admin-content dashboard-content">
 
 
                 {/* =========================
                     PAGE INTRO
                 ========================= */}
 
-                <section className="admin-intro">
+                <section className="admin-intro hero-section">
 
                     <div>
 
-                        <p className="admin-label">
+                        <p className="hero-label admin-label">
                             MOVIE MANAGEMENT
                         </p>
 
@@ -329,7 +323,7 @@ function AdminDashboard() {
                             <span>CineSync library.</span>
                         </h1>
 
-                        <p>
+                        <p className="hero-description">
                             Add movies, monitor streams,
                             and keep track of audience ratings.
                         </p>
@@ -528,7 +522,7 @@ function AdminDashboard() {
                         </span>
 
                         <strong>
-                            {movies.filter().length}
+                            {movies.length}
                         </strong>
 
                     </div>
@@ -578,38 +572,17 @@ function AdminDashboard() {
 
                         <strong>
 
-                            {stats.length > 0
-                                ? (
-                                    <strong>
-                                        {(() => {
-                                            const ratedMovies = stats.filter(
-                                                (movie) => movie.averageRating > 0
-                                            );
-
-                                            if (ratedMovies.length === 0) {
-                                                return "0.0";
-                                            }
-
-                                            const average =
-                                                ratedMovies.reduce(
-                                                    (total, movie) =>
-                                                        total + movie.averageRating,
-                                                    0
-                                                ) / ratedMovies.length;
-
-                                            return average.toFixed(1);
-                                        })()}
-
-                                        <small>★</small>
-                                    </strong>
-                                ).toFixed(1)
-                                : "0.0"
-                            }
-
-                            <small>
-                                ★
-                            </small>
-
+                            {(() => {
+                                const ratedMovies = stats.filter(
+                                    (movie) => Number(movie.averageRating) > 0
+                                );
+                                if (!ratedMovies.length) return "0.0";
+                                const average = ratedMovies.reduce(
+                                    (total, movie) => total + Number(movie.averageRating), 0
+                                ) / ratedMovies.length;
+                                return average.toFixed(1);
+                            })()}
+                            <small>★</small>
                         </strong>
 
                     </div>
@@ -662,10 +635,6 @@ function AdminDashboard() {
 
                                         <th>
                                             MOVIE
-                                        </th>
-
-                                        <th>
-                                            STATUS
                                         </th>
 
                                         <th>

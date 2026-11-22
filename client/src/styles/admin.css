@@ -795,3 +795,92 @@
     }
 
 }
+/* Match the user Dashboard's header, hero and layout. */
+.admin-page.dashboard { overflow-x: hidden; overflow-y: auto; }
+.admin-page .dashboard-header { position: sticky; }
+.admin-page .admin-content.dashboard-content { max-width: 1100px; padding-top: 70px; }
+.admin-page .admin-intro.hero-section { max-width: none; }
+.admin-page .admin-intro h1 { font-size: clamp(45px, 6vw, 72px); }
+.admin-page .admin-intro .hero-description { max-width: 600px; font-size: 17px; }
+.admin-page .admin-stat-card { transition: transform .25s ease, border-color .25s ease; }
+.admin-page .admin-stat-card:hover { transform: translateY(-4px); border-color: rgba(139,92,246,.4); }
+@media (max-width: 700px) {
+ .admin-page .admin-content.dashboard-content { padding: 55px 20px 60px; }
+ .admin-page .admin-intro h1 { font-size: 46px; }
+}
+@media (max-width: 500px) {
+ .admin-page .admin-content.dashboard-content { padding: 40px 15px 50px; }
+ .admin-page .admin-intro h1 { font-size: 38px; }
+ .admin-page .admin-intro .hero-description { font-size: 15px; }
+}
+
+/* Exact shared visual foundation from the user Dashboard.
+   dashboard.css is imported first by AdminDashboard.jsx. */
+.admin-page.dashboard {
+    overflow-x: hidden;
+    overflow-y: auto;
+    background: radial-gradient(circle at 15% 20%, rgba(124,58,237,.18), transparent 35%),
+                radial-gradient(circle at 85% 70%, rgba(168,85,247,.12), transparent 35%), #08080b;
+}
+.admin-page .dashboard-header.admin-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 80px;
+    padding: 0 55px;
+    background: rgba(8,8,11,.65);
+    border-bottom: 1px solid rgba(255,255,255,.07);
+    backdrop-filter: blur(15px);
+}
+.admin-page .dashboard-header .brand {font-size:25px;font-weight:800;letter-spacing:-1px;}
+.admin-page .dashboard-header .brand span {color:#a78bfa;}
+.admin-page .dashboard-header .logout-button {
+    padding:9px 18px;
+    border:1px solid rgba(255,255,255,.15);
+    border-radius:8px;
+    background:transparent;
+    color:#aaa;
+    cursor:pointer;
+    transition:all .25s ease;
+}
+.admin-page .dashboard-header .logout-button:hover {
+    color:white;border-color:#7c3aed;background:rgba(124,58,237,.12);
+}
+.admin-page .admin-content.dashboard-content {
+    position:relative;
+    z-index:1;
+    max-width:1100px;
+    margin:0 auto;
+    padding:90px 40px 60px;
+}
+.admin-page .admin-intro.hero-section {
+    max-width:1100px;
+    margin-bottom:55px;
+}
+.admin-page .admin-intro .hero-label {
+    color:#a78bfa;font-size:12px;font-weight:700;
+    letter-spacing:3px;margin-bottom:18px;
+}
+.admin-page .admin-intro.hero-section h1 {
+    margin:0;
+    font-size:clamp(45px,6vw,72px);
+    line-height:1.05;
+    letter-spacing:-3px;
+}
+.admin-page .admin-intro.hero-section h1 span {color:#8b5cf6;}
+.admin-page .admin-intro .hero-description {
+    max-width:600px;margin-top:25px;color:#8f8f98;
+    font-size:17px;line-height:1.7;
+}
+@media(max-width:700px) {
+    .admin-page .dashboard-header.admin-header {padding:0 20px;}
+    .admin-page .admin-content.dashboard-content {padding:90px 20px 60px;}
+}
+@media(max-width:500px) {
+    .admin-page .dashboard-header.admin-header {height:70px;}
+    .admin-page .dashboard-header .brand {font-size:21px;}
+    .admin-page .admin-content.dashboard-content {padding:85px 15px 50px;}
+    .admin-page .admin-intro.hero-section h1 {font-size:38px;letter-spacing:-2px;}
+    .admin-page .admin-intro .hero-description {font-size:15px;}
+}

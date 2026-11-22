@@ -13,6 +13,7 @@ import "./styles/auth.css";
 import "./styles/dashboard.css";
 import "./styles/movies.css";
 import "./styles/room.css";
+import "./styles/admin.css";
 import "./styles/watchroom.css";
 
 function App() {
